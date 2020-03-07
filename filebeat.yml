@@ -9,7 +9,7 @@ filebeat.autodiscover:
               - type: log
                 paths:
                   - '/var/lib/docker/containers/${data.docker.container.id}/*.log'
-                json.keys_under_root: false
+                json.keys_under_root: true
                 
 output.elasticsearch:
     hosts: ['elasticsearch:9200']
@@ -18,3 +18,10 @@ output.elasticsearch:
 setup.kibana:
     host: "http://kibana:5601"
     protocol: "http"
+
+filebeat.inputs:
+  - type: docker
+    containers.ids:
+      - "*"
+    processors:
+      - add_docker_metadata:
