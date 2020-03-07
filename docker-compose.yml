@@ -1,0 +1,56 @@
+version: '3'
+services:
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.4.0
+    ports:
+      - 9200:9200
+    environment: 
+        - "ES_JAVA_OPTS=-Xms2g -Xmx2g"
+        - cluster.routing.allocation.disk.threshold_enabled=false
+        - "TAKE_FILE_OWNERSHIP=1"
+        - discovery.type=single-node
+    volumes:
+        - './var/es_data:/usr/share/elasticsearch/data'
+  kibana:
+    image: docker.elastic.co/kibana/kibana:7.4.0
+    ports:
+      - 5601:5601
+  
+  filebeat:
+    image: docker.elastic.co/beats/filebeat:7.4.0
+    # https://github.com/docker/swarmkit/issues/1951
+    container_name: filebeat
+    command: --strict.perms=false -e
+    user: root
+    restart: on-failure
+    volumes:
+      - './filebeat.yml:/usr/share/filebeat/filebeat.yml:ro'
+      - './var/filebeat/data:/usr/share/filebeat/data'
+      - '/var/lib/docker/containers/:/var/lib/docker/containers/:ro'
+      - '/proc:/hostfs/proc:ro'
+      - '/sys/fs/cgroup:/hostfs/sys/fs/cgroup:ro'
+      - '/:/hostfs:ro'
+      - '/var/run/docker.sock:/var/run/docker.sock'
+     
+    depends_on: ['elasticsearch', 'kibana']
+  
+  
+  metricbeat:
+    image: docker.elastic.co/beats/metricbeat:7.4.0
+    container_name: metricbeat
+    restart: on-failure
+   # user: root
+    command: --strict.perms=false -e
+    volumes:
+      - './metricbeat.yml:/usr/share/metricbeat/metricbeat.yml'
+      - '/proc:/hostfs/proc:ro'
+      - '/sys/fs/cgroup:/hostfs/sys/fs/cgroup:ro'
+      - '/:/hostfs:ro'
+      - '/var/run/docker.sock:/var/run/docker.sock'
+    depends_on: ['elasticsearch', 'kibana']
+  
+  app:
+    image: node
+    command: sh -c 'cd /var/app && npm i && npm start'
+    volumes:
+        - './app:/var/app'
